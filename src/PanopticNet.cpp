@@ -23,7 +23,8 @@
 #include <sstream>
 #include <iostream>
 
-#define YOSO
+// #define YOSO
+#define Mask2Former
 
 // C PYTHON API REFERENCES
 //http://books.gigatux.nl/mirror/pythonprogramming/0596000855_python2-CHP-20-SECT-5.html
@@ -59,6 +60,8 @@ PanopticNet::PanopticNet(){
 
 #if defined(YOSO)
     this->py_module = PyImport_ImportModule("yoso_python"); //config_path.c_str()
+#elif defined(Mask2Former)
+    this->py_module = PyImport_ImportModule("mask2former_python"); //config_path.c_str()
 #else
     this->py_module = PyImport_ImportModule("panoptic_python"); //config_path.c_str()
 #endif
@@ -71,6 +74,8 @@ PanopticNet::PanopticNet(){
 
 #if defined(YOSO)
     this->py_class = PyObject_GetAttrString(this->py_module, (char*)"YOSO_Net");
+#elif defined(Mask2Former)
+    this->py_class = PyObject_GetAttrString(this->py_module, (char*)"Mask2Former_Net");
 #else
     this->py_class = PyObject_GetAttrString(this->py_module, (char*)"Panoptic_FPN_Net");
 #endif
@@ -86,6 +91,8 @@ PanopticNet::PanopticNet(){
     {
 #if defined(YOSO)
         std::string config_path_tmp = "config/YOSO_SLAM.yaml";
+#elif defined(Mask2Former)
+        std::string config_path_tmp = "config/Mask2Former_SLAM.yaml";
 #else
         std::string config_path_tmp = "config/Panoptic_SLAM.yaml";
 #endif
@@ -98,7 +105,9 @@ PanopticNet::PanopticNet(){
         }
 
 #if defined(YOSO)
-        this->py_method =  PyObject_GetAttrString(this->py_instance, (char*)"YOSO_run_cpp"); 
+        this->py_method =  PyObject_GetAttrString(this->py_instance, (char*)"yoso_run_cpp"); 
+#elif defined(Mask2Former)
+        this->py_method =  PyObject_GetAttrString(this->py_instance, (char*)"mask2former_run_cpp"); 
 #else
         this->py_method =  PyObject_GetAttrString(this->py_instance, (char*)"panoptic_run_cpp"); 
 #endif

@@ -1,0 +1,4 @@
+MODEL_PATH: "src/python/Mask2Former/mask2former_res50_coco.pth"
+CONFIG: "src/python/Mask2Former/configs/coco/panoptic-segmentation/maskformer2_R50_bs16_50ep.yaml"
+
+#../src/python/
