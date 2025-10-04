@@ -1,0 +1,6 @@
+MODEL_PATH: "src/python/YOSO/yoso_res50_coco.pth"
+CONFIG: "src/python/YOSO/configs/coco/panoptic-segmentation/YOSO-R50.yaml"
+
+CONFIDENCE_THRESHOLD: 0.8
+OVERLAP_THRESHOLD: 0.8
+#../src/python/
