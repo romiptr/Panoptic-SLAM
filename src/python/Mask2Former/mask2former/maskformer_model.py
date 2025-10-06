@@ -331,13 +331,30 @@ class MaskFormer(nn.Module):
                     current_segment_id += 1
                     panoptic_seg[mask] = current_segment_id
 
-                    segments_info.append(
-                        {
+                    # segments_info.append(
+                    #     {
+                    #         "id": current_segment_id,
+                    #         "isthing": bool(isthing),
+                    #         "category_id": int(pred_class),
+                    #     }
+                    # )
+
+                    # --- New, for panoptic-slam purposes ---
+                    current_segment_id += 1
+                    panoptic_seg[mask] = current_segment_id
+
+                    segment_info.append{
                             "id": current_segment_id,
                             "isthing": bool(isthing),
                             "category_id": int(pred_class),
-                        }
-                    )
+                            "area": mask.sum().item(),
+                    }
+                    if isthing:
+                        segment_info["score"] = cur_scores[k].time()
+                        segment_info["instance_id"] = k
+                    
+                    segments_info.append(segment_info)
+                    # ---------------------------------------
 
             return panoptic_seg, segments_info
 
