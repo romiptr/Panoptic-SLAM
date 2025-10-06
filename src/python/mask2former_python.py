@@ -55,80 +55,52 @@ class Mask2Former_Net:
     #---------------------------------------------
     def mask2former_run_cpp(self,image_cv):
         self.image = image_cv
-        
+
         results = []
         self.all_masks = []
         predictions, visualized_output = self.demo.run_on_image(image_cv)
-
-        semantic_mask = predictions['sem_seg'].argmax(0).cpu()
-        panoptic_result =predictions['panoptic_seg'][1]
-
-        instances = predictions['instances']
-        fields = instances.get_fields() 
-        instance_mask = instances.get('pred_masks').cpu().numpy() # collect all instance pred masks
-        bboxes =  fields['pred_boxes'].tensor.cpu().numpy() # collect all instances bounding boxes
-       
         self.output_img = visualized_output.get_image()[:, :, ::-1]
-        
-        #fill results with "Things" 
-        #[id,isThing,score,category_id,instance_id,area,mask,bbox]
-        num_instances = len(instance_mask)
-        semantic_labels = [] # store semantic label 
 
-        for info,pred_mask,boxes in zip(panoptic_result,instance_mask,bboxes):
-            tmp=[]
+        panoptic_mask_map, segments_info = predictions['panoptic_seg']
+        panoptic_mask_map_np = panoptic_mask_map.cpu().numpy()
+
+        self.union_instance_mask = np.zeros(panoptic_mask_map_np.shape, dtype=np.uint8)
+
+        for segment in segments_info:
+            tmp = []
+
+            binary_mask = (panoptic_mask_map_np == segment['id'])
+            pred_mask = (binary_mask*255).astype('uint8') 
+
+            tmp.append(segment['id'])
+            tmp.append(segment['isthing'])
+            tmp.append(segment.get('score', 0.0))
+            tmp.append(segment['category_id'])
+            tmp.append(segment.get('instance_id', 0))
+            tmp.append(segment['area'])
             
-            info_items =list(info.items()) # get each item from dict panoptic_result and convert into a list
-
-            pred_mask = np.array(pred_mask*255).astype('uint8')         
-
-            #if isThing is False
-            if(info_items[1][1] is False): continue # ignore Stuff objects 
+            if segment['isthing']:
+                self.union_instance_mask[binary_mask] = 255
             
-            tmp.append(info_items[0][1]) # id
-            tmp.append(info_items[1][1]) # isThing
-            tmp.append(info_items[2][1]) #score
-            tmp.append(info_items[3][1]) #category_id
-            tmp.append(info_items[4][1]) #instance_id
-            tmp.append(info_items[5][1]) #area
-            tmp.append(self.binary_mask_2_bytearray(pred_mask)) # numpy mask
-            tmp.append(list(boxes)) # numpy bbox
+            tmp.append(self.binary_mask_2_bytearray(pred_mask)) # mask
+            
+            # bounding box
+            if segment['isthing'] and segment['area'] > 0:
+                rows = np.any(binary_mask, axis=1)
+                cols = np.any(binary_mask, axis=0)
+                if rows.any() and cols.any():
+                    ymin, ymax = np.where(rows)[0][[0, -1]]
+                    xmin, xmax = np.where(cols)[0][[0, -1]]
+                    bbox = [float(xmin), float(ymin), float(xmax), float(ymax)]
+                else:
+                    bbox = [0.0, 0.0, 1.0, 1.0] # Placeholder for empty mask
+            else:
+                bbox = [0.0, 0.0, 1.0, 1.0]  # Placeholder for stuff
+            tmp.append(bbox)
+
             results.append(tmp)
             self.all_masks.append(pred_mask)
-     
-        #fill results with "stuff" 
-        semantic_results = panoptic_result[num_instances:]
-        
-        for info in semantic_results:
-            info_items =list(info.items())
-            semantic_labels.append(info_items[2][1])
-   
-        for x in np.unique(semantic_mask):
-            if(x==0): 
-                binary_mask = np.array(semantic_mask)==x
-                self.union_instance_mask = binary_mask
-            else:
-                if(x in semantic_labels):
-                    idx = semantic_labels.index(x)
-                    binary_mask = np.array(semantic_mask)==x
-                    semantic_result = semantic_results[idx]
-
-                    info_items =list(semantic_result.items())
-                    tmp = []
-
-                    binary_mask = np.array(binary_mask*255).astype('uint8')
-
-                    tmp.append(info_items[0][1]) # id
-                    tmp.append(info_items[1][1]) # isThing
-                    tmp.append(0.0) #score
-                    tmp.append(info_items[2][1]) #category_id
-                    tmp.append(0) #instance_id
-                    tmp.append(info_items[3][1]) #area
-                    tmp.append(self.binary_mask_2_bytearray(binary_mask)) # numpy mask
-                    tmp.append([0,0,1,1]) # numpy bbox
-                    results.append(tmp)
-                    self.all_masks.append(binary_mask)
-        
+            
         return results
     #---------------------------------------------
     def get_output_img(self):
